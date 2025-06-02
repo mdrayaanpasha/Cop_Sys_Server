@@ -14,25 +14,26 @@ datasource db {
 }
 
 model Cop {
-  id          Int     @id @default(autoincrement())
-  name        String
-  badgeNumber String  @unique
-  rank        CopRank
-
+  id                     Int     @id @default(autoincrement())
+  name                   String
+  badgeNumber            String  @unique
+  rank                   CopRank
+  yearsOfService         Int     @default(0) // Number of years in service
   // The metrics needed for scoring v1.0
-  bodyCamPercent         Float @default(0) // 0-100
-  patrolFeedback         Float @default(0) // 0-5
-  complaintCount         Int   @default(0)
-  arrestsMade            Int   @default(0)
-  useOfForceIncidents    Int   @default(0)
-  trainingScore          Float @default(0) // 0-1
-  avgResponseTimePeakHrs Float @default(0) // in minutes
-  geoPatrolCoverageIndex Float @default(0) // 0-1
-  publicFeedbackScore    Float @default(0) // 0-5
-  officerAbsenteeismRate Float @default(0) // 0-1 (e.g. 0.08 = 8%)
+  bodyCamPercent         Float   @default(0) // 0-100
+  patrolFeedback         Float   @default(0) // 0-5
+  complaintCount         Int     @default(0)
+  arrestsMade            Int     @default(0)
+  useOfForceIncidents    Int     @default(0)
+  trainingScore          Float   @default(0) // 0-1
+  avgResponseTimePeakHrs Float   @default(0) // in minutes
+  geoPatrolCoverageIndex Float   @default(0) // 0-1
+  publicFeedbackScore    Float   @default(0) // 0-5
+  officerAbsenteeismRate Float   @default(0) // 0-1 (e.g. 0.08 = 8%)
 
   shifts   Shift[]
   CopScore CopScore?
+  rankLogs CopRankLogs[]
 }
 
 enum CopRank {
@@ -49,6 +50,25 @@ enum CopRank {
   DirectorInspectorGeneral
   InspectorGeneral
   DirectorGeneralPolice
+}
+
+model CopRankLogs {
+  id                     Int      @id @default(autoincrement())
+  cop                    Cop      @relation(fields: [copId], references: [id])
+  copId                  Int
+  Rank                   Int
+  bodyCamPercent         Float    @default(0) // 0-100
+  patrolFeedback         Float    @default(0) // 0-5
+  complaintCount         Int      @default(0)
+  arrestsMade            Int      @default(0)
+  useOfForceIncidents    Int      @default(0)
+  trainingScore          Float    @default(0) // 0-1
+  avgResponseTimePeakHrs Float    @default(0) // in minutes
+  geoPatrolCoverageIndex Float    @default(0) // 0-1
+  publicFeedbackScore    Float    @default(0) // 0-5
+  officerAbsenteeismRate Float    @default(0) // 0-1 (e.g. 0.08 = 8%)
+  Score                  Float
+  timestamp              DateTime @default(now())
 }
 
 model Shift {

@@ -71,7 +71,7 @@ class RankAlgorithm {
     }
 
     // Express handler: update all cop rankings based on scores
-    updateCopRankings = async (req: Request, res: Response): Promise<any> => { // Changed to arrow function
+    updateCopRankings = async (req: Request, res: Response): Promise<any> => {
         try {
             const cops = await prisma.cop.findMany();
 
@@ -79,28 +79,73 @@ class RankAlgorithm {
                 return res.status(404).json({ error: 'No cops found' });
             }
 
-            // Calculate scores for all cops in parallel
-            // Use Promise.all with map to calculate and upsert scores for all cops efficiently
             const scoresWithCopId = await Promise.all(
                 cops.map(async (cop) => ({
                     copId: cop.id,
-                    score: await this.calculateAndUpsertScore(cop.id) // This will now work
+                    score: await this.calculateAndUpsertScore(cop.id),
+                    bodyCamPercent: cop.bodyCamPercent,
+                    trainingScore: cop.trainingScore,
+                    avgResponseTimePeakHrs: cop.avgResponseTimePeakHrs,
+                    geoPatrolCoverageIndex: cop.geoPatrolCoverageIndex,
+                    publicFeedbackScore: cop.publicFeedbackScore,
+                    officerAbsenteeismRate: cop.officerAbsenteeismRate,
+                    patrolFeedback: cop.patrolFeedback,
+                    complaintCount: cop.complaintCount,
+                    arrestsMade: cop.arrestsMade,
+                    useOfForceIncidents: cop.useOfForceIncidents
                 }))
             );
 
-            // Sort descending by score (best first)
             scoresWithCopId.sort((a, b) => b.score - a.score);
 
             if (scoresWithCopId.length === 0) {
                 return res.status(404).json({ error: 'No scores found after calculation' });
             }
 
-            // Assign rank and update
             for (let i = 0; i < scoresWithCopId.length; i++) {
+                const copData = scoresWithCopId[i];
+
+                const lastLog = await prisma.copRankLogs.findFirst({
+                    where: { copId: copData.copId },
+                    orderBy: { timestamp: 'desc' }
+                });
+
+                const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+                if (lastLog && new Date(lastLog.timestamp).getTime() > thirtyDaysAgo) {
+                    continue; // Skip logging if recent log exists
+                }
+
+                await prisma.copRankLogs.create({
+                    data: {
+                        copId: copData.copId,
+                        Rank: i + 1,
+                        bodyCamPercent: copData.bodyCamPercent,
+                        trainingScore: copData.trainingScore,
+                        avgResponseTimePeakHrs: copData.avgResponseTimePeakHrs,
+                        geoPatrolCoverageIndex: copData.geoPatrolCoverageIndex,
+                        publicFeedbackScore: copData.publicFeedbackScore,
+                        officerAbsenteeismRate: copData.officerAbsenteeismRate,
+                        patrolFeedback: copData.patrolFeedback,
+                        complaintCount: copData.complaintCount,
+                        arrestsMade: copData.arrestsMade,
+                        useOfForceIncidents: copData.useOfForceIncidents,
+                        Score: copData.score,
+                        timestamp: new Date()
+                    }
+                });
+
                 await prisma.copScore.upsert({
-                    where: { copId: scoresWithCopId[i].copId },
-                    update: { rank: i + 1, score: scoresWithCopId[i].score }, // Also update score if it changed
-                    create: { copId: scoresWithCopId[i].copId, rank: i + 1, score: scoresWithCopId[i].score },
+                    where: { copId: copData.copId },
+                    update: {
+                        rank: i + 1,
+                        score: copData.score
+                    },
+                    create: {
+                        copId: copData.copId,
+                        rank: i + 1,
+                        score: copData.score
+                    }
                 });
             }
 
@@ -109,7 +154,8 @@ class RankAlgorithm {
             console.error('[updateCopRankings] Error:', err);
             return res.status(500).json({ error: 'Internal server error' });
         }
-    }
+    };
+
 
     // Express handler: get top 10 ranked cops
     topRankedCops = async (req: Request, res: Response): Promise<any> => { // Changed to arrow function

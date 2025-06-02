@@ -48,6 +48,7 @@ app.get('/seed-data', async (req: Request, res: Response): Promise<any> => {
                     badgeNumber: `BADGE${1000 + i}`,
                     rank: getRandomItem(copRanks),
                     bodyCamPercent: getRandomFloat(50, 100),
+                    yearsOfService: getRandomInt(1, 30),
                     patrolFeedback: getRandomFloat(2, 5),
                     complaintCount: getRandomInt(0, 5),
                     arrestsMade: getRandomInt(5, 50),
