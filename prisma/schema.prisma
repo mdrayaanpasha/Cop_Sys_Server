@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cop {
+  id          Int     @id @default(autoincrement())
+  name        String
+  badgeNumber String  @unique
+  rank        CopRank
+
+  // The metrics needed for scoring v1.0
+  bodyCamPercent         Float @default(0) // 0-100
+  patrolFeedback         Float @default(0) // 0-5
+  complaintCount         Int   @default(0)
+  arrestsMade            Int   @default(0)
+  useOfForceIncidents    Int   @default(0)
+  trainingScore          Float @default(0) // 0-1
+  avgResponseTimePeakHrs Float @default(0) // in minutes
+  geoPatrolCoverageIndex Float @default(0) // 0-1
+  publicFeedbackScore    Float @default(0) // 0-5
+  officerAbsenteeismRate Float @default(0) // 0-1 (e.g. 0.08 = 8%)
+
+  shifts   Shift[]
+  CopScore CopScore?
+}
+
+enum CopRank {
+  Constable
+  seniorConstable
+  HeadConstable
+  AssistantSubInspector
+  SubInspector
+  Inspector
+  DeputySuperintendent
+  AdditionalSuperintendent
+  Superintendent
+  SeniorSuperintendent
+  DirectorInspectorGeneral
+  InspectorGeneral
+  DirectorGeneralPolice
+}
+
+model Shift {
+  id        Int      @id @default(autoincrement())
+  cop       Cop      @relation(fields: [copId], references: [id])
+  copId     Int
+  startTime DateTime
+  endTime   DateTime
+  camLogs   CamLog[]
+}
+
+model CamLog {
+  id        Int      @id @default(autoincrement())
+  shift     Shift    @relation(fields: [shiftId], references: [id])
+  shiftId   Int
+  event     String // 'ON' or 'OFF'
+  timestamp DateTime
+}
+
+model CopScore {
+  id        Int      @id @default(autoincrement())
+  cop       Cop      @relation(fields: [copId], references: [id])
+  copId     Int      @unique
+  version   String   @default("v1.0")
+  score     Float    @default(0)
+  rank      Int      @default(0) // Lower = better
+  updatedAt DateTime @updatedAt
+}
